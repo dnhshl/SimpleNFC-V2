@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">SimpleNFC-V2</string>
+    <string name="nfc_not_available">NFC nicht verfügbar</string>
+    <string name="nfc_not_activated">Bitte aktivieren Sie NFC in den Systemeinstellungen</string>
+    <string name="nfc_activate_title">Achtung!</string>
+    <string name="activate">aktivieren</string>
+    <string name="nfc_received">NFC Intent empfangen %s</string>
+</resources>
