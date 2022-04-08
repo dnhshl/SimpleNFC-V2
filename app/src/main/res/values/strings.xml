@@ -5,4 +5,5 @@
     <string name="nfc_activate_title">Achtung!</string>
     <string name="activate">aktivieren</string>
     <string name="nfc_received">NFC Intent empfangen %s</string>
+    <string name="error_json_parsing">Fehler beim Parsen des JSON Strings</string>
 </resources>

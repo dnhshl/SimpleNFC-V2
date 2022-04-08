@@ -31,7 +31,13 @@ android {
     }
 }
 
+ext {
+    ndefToolsForAndroidVersion = '2.0.0'
+}
+
+
 dependencies {
+    api("com.github.skjolber.ndef-tools-for-android:ndeftools:${ndefToolsForAndroidVersion}")
 
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.4.1'
@@ -42,5 +48,4 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
     implementation("com.louiscad.splitties:splitties-toast:3.0.0")
     implementation("com.louiscad.splitties:splitties-alertdialog:3.0.0")
-    implementation 'com.google.code.ndef-tools-for-android:ndeftools:1.2.4'
 }

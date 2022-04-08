@@ -2,20 +2,23 @@ package com.example.simplenfc_v2
 
 import android.app.PendingIntent
 import android.content.Intent
-import android.graphics.Color.rgb
-import android.net.Uri
 import android.nfc.NdefMessage
 import android.nfc.NfcAdapter
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.widget.TextView
-import android.widget.Toast
-import org.ndeftools.Message
-import org.ndeftools.Record
-import org.ndeftools.externaltype.AndroidApplicationRecord
-import org.ndeftools.wellknown.TextRecord
-import org.ndeftools.wellknown.UriRecord
+import com.github.skjolber.ndef.Message
+import com.github.skjolber.ndef.Record
+import com.github.skjolber.ndef.externaltype.AndroidApplicationRecord
+import com.github.skjolber.ndef.wellknown.TextRecord
+import org.json.JSONException
+import org.json.JSONObject
+
+import splitties.alertdialog.alertDialog
+import splitties.alertdialog.cancelButton
+import splitties.alertdialog.positiveButton
 import splitties.toast.toast
 
 class MainActivity : AppCompatActivity() {
@@ -34,34 +37,42 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, "NFC not available")
             finish()
         }
-
-
-        val intent = intent
-        Log.i(TAG, "onCreate: ${intent.action}")
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        Log.i(TAG, "onNewIntent : ${intent!!.action}")
+        Log.i(TAG, "onNewIntent : ${intent.action}")
 
         if (NfcAdapter.ACTION_NDEF_DISCOVERED == intent.action) {
             processNfcIntent(intent)
-
         }
     }
 
     override fun onResume() {
         super.onResume()
-        val intent = intent
-        Log.i(TAG, "onResume: ${intent.action}")
-        enableNfcForegroundDispatch()
+
+        if (!nfcAdapter.isEnabled) {
+            alertDialog (title = getString(R.string.nfc_activate_title),
+                message = getString(R.string.nfc_not_activated)){
+                positiveButton(R.string.activate) {
+                    val intent = Intent(Settings.ACTION_NFC_SETTINGS)
+                    startActivity(intent)
+                }
+                cancelButton { finish() }
+            }.show()
+        } else {
+            val intent = intent
+            Log.i(TAG, "onResume: ${intent.action}")
+            enableNfcForegroundDispatch()
+            processNfcIntent(intent)
+        }
     }
 
     private fun enableNfcForegroundDispatch() {
         try {
             val intent = Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
             val nfcPendingIntent = PendingIntent.getActivity(this, 0, intent, 0)
-            nfcAdapter?.enableForegroundDispatch(this, nfcPendingIntent, null, null)
+            nfcAdapter.enableForegroundDispatch(this, nfcPendingIntent, null, null)
         } catch (ex: IllegalStateException) {
             Log.e(TAG, "Error enabling NFC foreground dispatch", ex)
         }
@@ -74,7 +85,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun disableNfcForegroundDispatch() {
         try {
-            nfcAdapter?.disableForegroundDispatch(this)
+            nfcAdapter.disableForegroundDispatch(this)
         } catch (ex: IllegalStateException) {
             Log.e(TAG, "Error disabling NFC foreground dispatch", ex)
         }
@@ -83,23 +94,21 @@ class MainActivity : AppCompatActivity() {
     private fun processNfcIntent(intent: Intent) {
         if(!intent.hasExtra(NfcAdapter.EXTRA_TAG)) return
 
-        Log.i(TAG, "handle Intent processing")
-        toast(getString(R.string.nfc_received, intent.action))
-
+        // alle Messages vom NFC TAG lesen
         val messages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
         if(messages == null || messages.size == 0) return
 
+        // Jede Message einzeln verarbeiten
         for(message in messages) {
             try {
                 val records : List<Record> = Message(message as NdefMessage)
-                Log.i(TAG, "Message mit ${records.size} Records")
+                // Jeden Record der Message verarbeiten
                 for(record in records) {
                     when (record) {
-                        is TextRecord -> doSomething(record as TextRecord)
-                        is AndroidApplicationRecord -> {
-                            val aar = record as AndroidApplicationRecord
-                            Log.i(TAG, "Package is ${aar.packageName}")
-                        }
+                        // Wir reagieren nur auf TextRecords
+                        is TextRecord -> parseJsonData(record.text)
+                        // Ausgabe des AAR Records nur zu Info im Log
+                        is AndroidApplicationRecord -> Log.i(TAG, "Package is ${record.packageName}")
                     }
                 }
             } catch (e: Exception) {
@@ -108,8 +117,19 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun doSomething(textRecord: TextRecord) {
-        val jsonString = textRecord.text
-        textView.text = jsonString
+
+    private fun parseJsonData(jsonString : String) {
+        try {
+            val obj = JSONObject(jsonString)
+            val id = obj.getInt("ID")
+            val command = obj.getString("command").toString()
+
+            // Aktion hier nur Ausgabe als TextView und Toast
+            textView.text = command
+            toast("NFC Card: ID $id, Anweisung $command")
+        } catch (e : JSONException) {
+            e.printStackTrace()
+            Log.e(TAG, getString(R.string.error_json_parsing))
+        }
     }
 }
