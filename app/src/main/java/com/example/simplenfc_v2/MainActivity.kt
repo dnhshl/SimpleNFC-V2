@@ -37,6 +37,11 @@ class MainActivity : AppCompatActivity() {
             Log.i(TAG, "NFC not available")
             finish()
         }
+
+        val intent = intent
+        Log.i(TAG, "onCreate: ${intent.action}")
+
+        processNfcIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -51,6 +56,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
 
+        enableNfcForegroundDispatch()
+
         if (!nfcAdapter.isEnabled) {
             alertDialog (title = getString(R.string.nfc_activate_title),
                 message = getString(R.string.nfc_not_activated)){
@@ -60,11 +67,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 cancelButton { finish() }
             }.show()
-        } else {
-            val intent = intent
-            Log.i(TAG, "onResume: ${intent.action}")
-            enableNfcForegroundDispatch()
-            processNfcIntent(intent)
         }
     }
 
@@ -94,26 +96,22 @@ class MainActivity : AppCompatActivity() {
     private fun processNfcIntent(intent: Intent) {
         if(!intent.hasExtra(NfcAdapter.EXTRA_TAG)) return
 
-        // alle Messages vom NFC TAG lesen
+        // Message vom NFC TAG lesen
         val messages = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
         if(messages == null || messages.size == 0) return
-
-        // Jede Message einzeln verarbeiten
-        for(message in messages) {
-            try {
-                val records : List<Record> = Message(message as NdefMessage)
-                // Jeden Record der Message verarbeiten
-                for(record in records) {
-                    when (record) {
-                        // Wir reagieren nur auf TextRecords
-                        is TextRecord -> parseJsonData(record.text)
-                        // Ausgabe des AAR Records nur zu Info im Log
-                        is AndroidApplicationRecord -> Log.i(TAG, "Package is ${record.packageName}")
-                    }
+        try {
+            val records : List<Record> = Message(messages[0] as NdefMessage)
+            // Jeden Record der Message verarbeiten
+            for(record in records) {
+                when (record) {
+                    // Wir reagieren nur auf TextRecords
+                    is TextRecord -> parseJsonData(record.text)
+                    // Ausgabe des AAR Records nur zu Info im Log
+                    is AndroidApplicationRecord -> Log.i(TAG, "AAR is ${record.packageName}")
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Problem parsing message : ${e.localizedMessage}")
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Problem parsing message : ${e.localizedMessage}")
         }
     }
 
